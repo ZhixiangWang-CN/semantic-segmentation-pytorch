@@ -65,14 +65,14 @@ def test(segmentation_module, loader, gpu):
 
         with torch.no_grad():
             scores = torch.zeros(1, cfg.DATASET.num_class, segSize[0], segSize[1])
-            scores = async_copy_to(scores, gpu)
+            # scores = async_copy_to(scores, 'cpu')
 
             for img in img_resized_list:
                 feed_dict = batch_data.copy()
                 feed_dict['img_data'] = img
                 del feed_dict['img_ori']
                 del feed_dict['info']
-                feed_dict = async_copy_to(feed_dict, gpu)
+                # feed_dict = async_copy_to(feed_dict)
 
                 # forward pass
                 pred_tmp = segmentation_module(feed_dict, segSize=segSize)
@@ -92,7 +92,7 @@ def test(segmentation_module, loader, gpu):
 
 
 def main(cfg, gpu):
-    torch.cuda.set_device(gpu)
+    # torch.cuda.set_device(cpu)
 
     # Network Builders
     net_encoder = ModelBuilder.build_encoder(
@@ -122,7 +122,7 @@ def main(cfg, gpu):
         num_workers=5,
         drop_last=True)
 
-    segmentation_module.cuda()
+    # segmentation_module.cuda()
 
     # Main loop
     test(segmentation_module, loader_test, gpu)
