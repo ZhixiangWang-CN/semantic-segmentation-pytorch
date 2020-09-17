@@ -28,19 +28,26 @@ class SegmentationModule(SegmentationModuleBase):
 
     def forward(self, feed_dict, *, segSize=None):
         # training
+
         if segSize is None:
-            if self.deep_sup_scale is not None: # use deep supervision technique
-                (pred, pred_deepsup) = self.decoder(self.encoder(feed_dict['img_data'], return_feature_maps=True))
-            else:
-                pred = self.decoder(self.encoder(feed_dict['img_data'], return_feature_maps=True))
+            count_loss = 0
+            count_acc  = 0
+            n = len(feed_dict)
+            for i in range(n):
+                if self.deep_sup_scale is not None: # use deep supervision technique
+                    (pred, pred_deepsup) = self.decoder(self.encoder(feed_dict[i]['img_data'], return_feature_maps=True))
+                else:
+                    pred = self.decoder(self.encoder(feed_dict[i]['img_data'], return_feature_maps=True))
 
-            loss = self.crit(pred, feed_dict['seg_label'])
-            if self.deep_sup_scale is not None:
-                loss_deepsup = self.crit(pred_deepsup, feed_dict['seg_label'])
-                loss = loss + loss_deepsup * self.deep_sup_scale
+                loss = self.crit(pred, feed_dict[i]['seg_label'])
+                if self.deep_sup_scale is not None:
+                    loss_deepsup = self.crit(pred_deepsup, feed_dict[i]['seg_label'])
+                    loss = loss + loss_deepsup * self.deep_sup_scale
 
-            acc = self.pixel_acc(pred, feed_dict['seg_label'])
-            return loss, acc
+                acc = self.pixel_acc(pred, feed_dict[i]['seg_label'])
+                count_acc+=acc
+                count_loss+=loss
+            return count_loss/n, count_acc/n
         # inference
         else:
             pred = self.decoder(self.encoder(feed_dict['img_data'], return_feature_maps=True), segSize=segSize)
@@ -62,7 +69,8 @@ class ModelBuilder:
 
     @staticmethod
     def build_encoder(arch='resnet50dilated', fc_dim=512, weights=''):
-        pretrained = True if len(weights) == 0 else False
+        # pretrained = True if len(weights) == 0 else False
+        pretrained = False
         arch = arch.lower()
         if arch == 'mobilenetv2dilated':
             orig_mobilenet = mobilenet.__dict__['mobilenetv2'](pretrained=pretrained)
